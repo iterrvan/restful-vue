@@ -424,22 +424,190 @@ export class MemStorage implements IStorage {
     return this.reviews.get(productId) || [];
   }
 
-  async addReview(userId: number, productId: number, rating: number, comment?: string): Promise<Review> {
-    const review: Review = {
+  async addReview(review: InsertReview): Promise<Review> {
+    const newReview: Review = {
+      ...review,
       id: this.currentId++,
-      userId,
-      productId,
-      rating,
-      comment: comment || null,
+      isVerifiedPurchase: review.isVerifiedPurchase || false,
+      helpfulCount: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
     
-    const existing = this.reviews.get(productId) || [];
-    existing.push(review);
-    this.reviews.set(productId, existing);
+    const existing = this.reviews.get(review.productId) || [];
+    existing.push(newReview);
+    this.reviews.set(review.productId, existing);
     
-    return review;
+    return newReview;
+  }
+
+  async markReviewHelpful(reviewId: number, userId: number, isHelpful: boolean): Promise<ReviewHelpful> {
+    const helpful: ReviewHelpful = {
+      id: this.currentId++,
+      reviewId,
+      userId,
+      isHelpful,
+      createdAt: new Date()
+    };
+    
+    const existing = this.reviewHelpful.get(reviewId) || [];
+    existing.push(helpful);
+    this.reviewHelpful.set(reviewId, existing);
+    
+    return helpful;
+  }
+
+  // Coupons methods
+  async getCoupons(): Promise<Coupon[]> {
+    return Array.from(this.coupons.values());
+  }
+
+  async getCoupon(code: string): Promise<Coupon | undefined> {
+    return Array.from(this.coupons.values()).find(coupon => coupon.code === code);
+  }
+
+  async validateCoupon(code: string, userId: number, total: number): Promise<{ valid: boolean; discount: number; coupon?: Coupon }> {
+    const coupon = await this.getCoupon(code);
+    
+    if (!coupon || !coupon.isActive) {
+      return { valid: false, discount: 0 };
+    }
+    
+    const now = new Date();
+    if (coupon.validUntil && now > coupon.validUntil) {
+      return { valid: false, discount: 0 };
+    }
+    
+    if (coupon.minimumAmount && total < parseFloat(coupon.minimumAmount)) {
+      return { valid: false, discount: 0 };
+    }
+    
+    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+      return { valid: false, discount: 0 };
+    }
+    
+    let discount = 0;
+    if (coupon.type === 'percentage') {
+      discount = (total * parseFloat(coupon.value)) / 100;
+      if (coupon.maxDiscount && discount > parseFloat(coupon.maxDiscount)) {
+        discount = parseFloat(coupon.maxDiscount);
+      }
+    } else {
+      discount = parseFloat(coupon.value);
+    }
+    
+    return { valid: true, discount, coupon };
+  }
+
+  async applyCoupon(userId: number, couponId: number, orderId?: number): Promise<void> {
+    const coupon = this.coupons.get(couponId);
+    if (coupon) {
+      coupon.usedCount = (coupon.usedCount || 0) + 1;
+      this.coupons.set(couponId, coupon);
+    }
+  }
+
+  // Notifications methods
+  async getUserNotifications(userId: number, unreadOnly?: boolean): Promise<Notification[]> {
+    const userNotifications = this.notifications.get(userId) || [];
+    if (unreadOnly) {
+      return userNotifications.filter(notification => !notification.isRead);
+    }
+    return userNotifications;
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const newNotification: Notification = {
+      ...notification,
+      id: this.currentId++,
+      isRead: false,
+      sentAt: null,
+      createdAt: new Date()
+    };
+    
+    const existing = this.notifications.get(notification.userId) || [];
+    existing.push(newNotification);
+    this.notifications.set(notification.userId, existing);
+    
+    return newNotification;
+  }
+
+  async markNotificationRead(notificationId: number): Promise<void> {
+    for (const [userId, notifications] of this.notifications.entries()) {
+      const notification = notifications.find(n => n.id === notificationId);
+      if (notification) {
+        notification.isRead = true;
+        this.notifications.set(userId, notifications);
+        break;
+      }
+    }
+  }
+
+  async markAllNotificationsRead(userId: number): Promise<void> {
+    const notifications = this.notifications.get(userId) || [];
+    notifications.forEach(notification => {
+      notification.isRead = true;
+    });
+    this.notifications.set(userId, notifications);
+  }
+
+  // Chat methods
+  async getChatSessions(userId?: number): Promise<ChatSession[]> {
+    if (userId) {
+      return Array.from(this.chatSessions.values()).filter(session => session.userId === userId);
+    }
+    return Array.from(this.chatSessions.values());
+  }
+
+  async createChatSession(session: InsertChatSession): Promise<ChatSession> {
+    const newSession: ChatSession = {
+      ...session,
+      id: this.currentId++,
+      status: session.status || "active",
+      priority: session.priority || "normal",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      closedAt: null
+    };
+    
+    this.chatSessions.set(newSession.id, newSession);
+    return newSession;
+  }
+
+  async getChatMessages(sessionId: number): Promise<ChatMessage[]> {
+    return this.chatMessages.get(sessionId) || [];
+  }
+
+  async addChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const newMessage: ChatMessage = {
+      ...message,
+      id: this.currentId++,
+      messageType: message.messageType || "text",
+      isRead: false,
+      createdAt: new Date()
+    };
+    
+    const existing = this.chatMessages.get(message.sessionId) || [];
+    existing.push(newMessage);
+    this.chatMessages.set(message.sessionId, existing);
+    
+    return newMessage;
+  }
+
+  async updateChatSession(sessionId: number, updates: Partial<ChatSession>): Promise<ChatSession> {
+    const session = this.chatSessions.get(sessionId);
+    if (!session) {
+      throw new Error('Chat session not found');
+    }
+    
+    const updatedSession = {
+      ...session,
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    this.chatSessions.set(sessionId, updatedSession);
+    return updatedSession;
   }
 }
 

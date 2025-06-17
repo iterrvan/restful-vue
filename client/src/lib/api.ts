@@ -112,6 +112,12 @@ export const api = {
   },
 
   // Reviews
+  async getProductReviews(productId: number) {
+    const response = await fetch(`/api/reviews/${productId}`);
+    if (!response.ok) throw new Error("Error al obtener reseñas");
+    return response.json();
+  },
+
   async addReview(userId: number, productId: number, rating: number, comment?: string) {
     const response = await apiRequest("POST", "/api/reviews", {
       userId,
@@ -119,6 +125,102 @@ export const api = {
       rating,
       comment
     });
+    return response.json();
+  },
+
+  async markReviewHelpful(reviewId: number, userId: number, isHelpful: boolean) {
+    const response = await apiRequest("POST", `/api/reviews/${reviewId}/helpful`, {
+      userId,
+      isHelpful
+    });
+    return response.json();
+  },
+
+  // Coupons
+  async getCoupons() {
+    const response = await fetch("/api/coupons");
+    if (!response.ok) throw new Error("Error al obtener cupones");
+    return response.json();
+  },
+
+  async validateCoupon(code: string, userId: number, total: number) {
+    const response = await apiRequest("POST", "/api/coupons/validate", {
+      code,
+      userId,
+      total
+    });
+    return response.json();
+  },
+
+  async applyCoupon(userId: number, couponId: number, orderId?: number) {
+    const response = await apiRequest("POST", "/api/coupons/apply", {
+      userId,
+      couponId,
+      orderId
+    });
+    return response.json();
+  },
+
+  // Notifications
+  async getNotifications(userId: number, unreadOnly?: boolean) {
+    const params = unreadOnly ? "?unreadOnly=true" : "";
+    const response = await fetch(`/api/notifications/${userId}${params}`);
+    if (!response.ok) throw new Error("Error al obtener notificaciones");
+    return response.json();
+  },
+
+  async createNotification(notification: any) {
+    const response = await apiRequest("POST", "/api/notifications", notification);
+    return response.json();
+  },
+
+  async markNotificationRead(notificationId: number) {
+    const response = await fetch(`/api/notifications/${notificationId}/read`, {
+      method: "PATCH"
+    });
+    if (!response.ok) throw new Error("Error al marcar notificación");
+    return response.json();
+  },
+
+  async markAllNotificationsRead(userId: number) {
+    const response = await fetch(`/api/notifications/${userId}/read-all`, {
+      method: "PATCH"
+    });
+    if (!response.ok) throw new Error("Error al marcar notificaciones");
+    return response.json();
+  },
+
+  // Chat
+  async getChatSessions(userId?: number) {
+    const params = userId ? `?userId=${userId}` : "";
+    const response = await fetch(`/api/chat/sessions${params}`);
+    if (!response.ok) throw new Error("Error al obtener sesiones de chat");
+    return response.json();
+  },
+
+  async createChatSession(session: any) {
+    const response = await apiRequest("POST", "/api/chat/sessions", session);
+    return response.json();
+  },
+
+  async getChatMessages(sessionId: number) {
+    const response = await fetch(`/api/chat/sessions/${sessionId}/messages`);
+    if (!response.ok) throw new Error("Error al obtener mensajes");
+    return response.json();
+  },
+
+  async sendChatMessage(message: any) {
+    const response = await apiRequest("POST", "/api/chat/messages", message);
+    return response.json();
+  },
+
+  async updateChatSession(sessionId: number, updates: any) {
+    const response = await fetch(`/api/chat/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error("Error al actualizar sesión");
     return response.json();
   }
 };

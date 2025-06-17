@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertCartItemSchema, insertAddressSchema, insertOrderSchema } from "@shared/schema";
+import { insertUserSchema, insertCartItemSchema, insertAddressSchema, insertOrderSchema, insertReviewSchema, insertCouponSchema, insertNotificationSchema, insertChatSessionSchema, insertChatMessageSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -209,13 +209,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reviews routes
+  app.get("/api/reviews/:productId", async (req, res) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const reviews = await storage.getProductReviews(productId);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener reseñas" });
+    }
+  });
+
   app.post("/api/reviews", async (req, res) => {
     try {
-      const { userId, productId, rating, comment } = req.body;
-      const review = await storage.addReview(userId, productId, rating, comment);
+      const reviewData = insertReviewSchema.parse(req.body);
+      const review = await storage.addReview(reviewData);
       res.json(review);
     } catch (error) {
       res.status(400).json({ message: "Error al agregar reseña" });
+    }
+  });
+
+  app.post("/api/reviews/:reviewId/helpful", async (req, res) => {
+    try {
+      const reviewId = parseInt(req.params.reviewId);
+      const { userId, isHelpful } = req.body;
+      const helpful = await storage.markReviewHelpful(reviewId, userId, isHelpful);
+      res.json(helpful);
+    } catch (error) {
+      res.status(400).json({ message: "Error al marcar reseña como útil" });
+    }
+  });
+
+  // Coupons routes
+  app.get("/api/coupons", async (req, res) => {
+    try {
+      const coupons = await storage.getCoupons();
+      res.json(coupons);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener cupones" });
+    }
+  });
+
+  app.get("/api/coupons/:code", async (req, res) => {
+    try {
+      const code = req.params.code;
+      const coupon = await storage.getCoupon(code);
+      if (!coupon) {
+        return res.status(404).json({ message: "Cupón no encontrado" });
+      }
+      res.json(coupon);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener cupón" });
+    }
+  });
+
+  app.post("/api/coupons/validate", async (req, res) => {
+    try {
+      const { code, userId, total } = req.body;
+      const validation = await storage.validateCoupon(code, userId, total);
+      res.json(validation);
+    } catch (error) {
+      res.status(400).json({ message: "Error al validar cupón" });
+    }
+  });
+
+  app.post("/api/coupons/apply", async (req, res) => {
+    try {
+      const { userId, couponId, orderId } = req.body;
+      await storage.applyCoupon(userId, couponId, orderId);
+      res.json({ message: "Cupón aplicado exitosamente" });
+    } catch (error) {
+      res.status(400).json({ message: "Error al aplicar cupón" });
+    }
+  });
+
+  // Notifications routes
+  app.get("/api/notifications/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const unreadOnly = req.query.unreadOnly === 'true';
+      const notifications = await storage.getUserNotifications(userId, unreadOnly);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener notificaciones" });
+    }
+  });
+
+  app.post("/api/notifications", async (req, res) => {
+    try {
+      const notificationData = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(notificationData);
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: "Error al crear notificación" });
+    }
+  });
+
+  app.patch("/api/notifications/:notificationId/read", async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.notificationId);
+      await storage.markNotificationRead(notificationId);
+      res.json({ message: "Notificación marcada como leída" });
+    } catch (error) {
+      res.status(400).json({ message: "Error al marcar notificación como leída" });
+    }
+  });
+
+  app.patch("/api/notifications/:userId/read-all", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      await storage.markAllNotificationsRead(userId);
+      res.json({ message: "Todas las notificaciones marcadas como leídas" });
+    } catch (error) {
+      res.status(400).json({ message: "Error al marcar todas las notificaciones como leídas" });
+    }
+  });
+
+  // Chat routes
+  app.get("/api/chat/sessions", async (req, res) => {
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const sessions = await storage.getChatSessions(userId);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener sesiones de chat" });
+    }
+  });
+
+  app.post("/api/chat/sessions", async (req, res) => {
+    try {
+      const sessionData = insertChatSessionSchema.parse(req.body);
+      const session = await storage.createChatSession(sessionData);
+      res.json(session);
+    } catch (error) {
+      res.status(400).json({ message: "Error al crear sesión de chat" });
+    }
+  });
+
+  app.get("/api/chat/sessions/:sessionId/messages", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const messages = await storage.getChatMessages(sessionId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener mensajes del chat" });
+    }
+  });
+
+  app.post("/api/chat/messages", async (req, res) => {
+    try {
+      const messageData = insertChatMessageSchema.parse(req.body);
+      const message = await storage.addChatMessage(messageData);
+      res.json(message);
+    } catch (error) {
+      res.status(400).json({ message: "Error al enviar mensaje" });
+    }
+  });
+
+  app.patch("/api/chat/sessions/:sessionId", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const updates = req.body;
+      const session = await storage.updateChatSession(sessionId, updates);
+      res.json(session);
+    } catch (error) {
+      res.status(400).json({ message: "Error al actualizar sesión de chat" });
     }
   });
 
