@@ -107,7 +107,7 @@ export default function Checkout() {
       const order = await api.createOrder({
         userId: user.id,
         addressId: addressId!,
-        total: total.toString(),
+        total: finalTotal.toString(),
       });
 
       // Clear cart and redirect to success
