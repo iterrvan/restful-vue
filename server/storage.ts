@@ -1,8 +1,11 @@
 import { 
   users, products, categories, cartItems, addresses, orders, favorites, reviews, carts, productGalleries,
+  coupons, notifications, chatSessions, chatMessages, reviewHelpful,
   type User, type InsertUser, type Product, type Category, type CartItem, type InsertCartItem,
   type Address, type InsertAddress, type Order, type InsertOrder, type Favorite, type Review,
-  type ProductGallery, type Cart
+  type ProductGallery, type Cart, type Coupon, type InsertCoupon, type Notification, 
+  type InsertNotification, type ChatSession, type InsertChatSession, type ChatMessage, 
+  type InsertChatMessage, type ReviewHelpful, type InsertReview
 } from "@shared/schema";
 
 export interface IStorage {
@@ -49,7 +52,27 @@ export interface IStorage {
   
   // Reviews
   getProductReviews(productId: number): Promise<Review[]>;
-  addReview(userId: number, productId: number, rating: number, comment?: string): Promise<Review>;
+  addReview(review: InsertReview): Promise<Review>;
+  markReviewHelpful(reviewId: number, userId: number, isHelpful: boolean): Promise<ReviewHelpful>;
+  
+  // Coupons
+  getCoupons(): Promise<Coupon[]>;
+  getCoupon(code: string): Promise<Coupon | undefined>;
+  validateCoupon(code: string, userId: number, total: number): Promise<{ valid: boolean; discount: number; coupon?: Coupon }>;
+  applyCoupon(userId: number, couponId: number, orderId?: number): Promise<void>;
+  
+  // Notifications
+  getUserNotifications(userId: number, unreadOnly?: boolean): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationRead(notificationId: number): Promise<void>;
+  markAllNotificationsRead(userId: number): Promise<void>;
+  
+  // Chat
+  getChatSessions(userId?: number): Promise<ChatSession[]>;
+  createChatSession(session: InsertChatSession): Promise<ChatSession>;
+  getChatMessages(sessionId: number): Promise<ChatMessage[]>;
+  addChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  updateChatSession(sessionId: number, updates: Partial<ChatSession>): Promise<ChatSession>;
 }
 
 export class MemStorage implements IStorage {
@@ -63,6 +86,11 @@ export class MemStorage implements IStorage {
   private orders: Map<number, Order[]>;
   private favorites: Map<number, Favorite[]>;
   private reviews: Map<number, Review[]>;
+  private coupons: Map<number, Coupon>;
+  private notifications: Map<number, Notification[]>;
+  private chatSessions: Map<number, ChatSession>;
+  private chatMessages: Map<number, ChatMessage[]>;
+  private reviewHelpful: Map<number, ReviewHelpful[]>;
   private currentId: number;
 
   constructor() {
@@ -76,6 +104,11 @@ export class MemStorage implements IStorage {
     this.orders = new Map();
     this.favorites = new Map();
     this.reviews = new Map();
+    this.coupons = new Map();
+    this.notifications = new Map();
+    this.chatSessions = new Map();
+    this.chatMessages = new Map();
+    this.reviewHelpful = new Map();
     this.currentId = 1;
     
     this.initializeSampleData();
@@ -140,7 +173,49 @@ export class MemStorage implements IStorage {
       this.productGalleries.set(gallery.productId, existing);
     });
 
-    this.currentId = 5;
+    // Sample coupons
+    const couponsData = [
+      {
+        id: 1,
+        code: "BIENVENIDO10",
+        name: "Bienvenida 10% descuento",
+        description: "10% de descuento para nuevos clientes",
+        type: "percentage",
+        value: "10.00",
+        minimumAmount: "50.00",
+        maxDiscount: null,
+        usageLimit: 100,
+        usedCount: 15,
+        isActive: true,
+        validFrom: new Date(),
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 2,
+        code: "VERANO25",
+        name: "Descuento de Verano",
+        description: "25% de descuento en productos seleccionados",
+        type: "percentage",
+        value: "25.00",
+        minimumAmount: "100.00",
+        maxDiscount: "50.00",
+        usageLimit: 50,
+        usedCount: 8,
+        isActive: true,
+        validFrom: new Date(),
+        validUntil: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+    
+    couponsData.forEach(coupon => {
+      this.coupons.set(coupon.id, coupon);
+    });
+
+    this.currentId = 10;
   }
 
   async getUser(id: number): Promise<User | undefined> {
