@@ -74,6 +74,9 @@ export default function Header() {
                 </span>
               </Button>
 
+              {/* Notifications */}
+              <NotificationCenter />
+
               {/* Cart */}
               <Button
                 variant="ghost"

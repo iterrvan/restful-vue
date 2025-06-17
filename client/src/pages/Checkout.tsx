@@ -20,6 +20,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { Address } from "@/types";
+import CouponSystem from "@/components/CouponSystem";
 
 const addressSchema = z.object({
   street: z.string().min(1, "La calle es requerida"),
@@ -37,6 +38,8 @@ export default function Checkout() {
   const [selectedAddress, setSelectedAddress] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [discount, setDiscount] = useState(0);
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -62,6 +65,17 @@ export default function Checkout() {
   });
 
   const total = getCartTotal();
+  const finalTotal = total - discount;
+
+  const handleCouponApplied = (discountAmount: number, coupon: any) => {
+    setDiscount(discountAmount);
+    setAppliedCoupon(coupon);
+  };
+
+  const handleCouponRemoved = () => {
+    setDiscount(0);
+    setAppliedCoupon(null);
+  };
 
   // Redirect if not authenticated or cart is empty
   if (!user) {

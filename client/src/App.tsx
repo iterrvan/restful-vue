@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import LiveChat from "@/components/LiveChat";
 import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
@@ -39,6 +40,7 @@ function App() {
           <CartProvider>
             <Toaster />
             <Router />
+            <LiveChat />
           </CartProvider>
         </AuthProvider>
       </TooltipProvider>
