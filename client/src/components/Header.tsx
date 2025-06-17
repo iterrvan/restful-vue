@@ -8,6 +8,7 @@ import { Heart, ShoppingCart, User, Menu, Search, ChevronDown } from "lucide-rea
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import CartSidebar from "./CartSidebar";
+import NotificationCenter from "./NotificationCenter";
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState("");

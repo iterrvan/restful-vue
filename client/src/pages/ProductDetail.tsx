@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Star, Minus, Plus, ShoppingCart, Heart, ArrowLeft } from "lucide-react";
+import ProductReviews from "@/components/ProductReviews";
 import { api } from "@/lib/api";
 import { Product } from "@/types";
 import { useCart } from "@/contexts/CartContext";
@@ -259,43 +260,7 @@ export default function ProductDetail() {
             </TabsContent>
             
             <TabsContent value="reviews" className="mt-6">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="font-semibold text-lg mb-4">Reseñas de Clientes</h3>
-                  <div className="space-y-4">
-                    <div className="border-b pb-4">
-                      <div className="flex items-center mb-2">
-                        <div className="flex text-yellow-400 mr-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star key={star} className="h-4 w-4 fill-current" />
-                          ))}
-                        </div>
-                        <span className="font-medium">Ana M.</span>
-                        <span className="text-gray-500 text-sm ml-2">hace 2 días</span>
-                      </div>
-                      <p className="text-gray-600">
-                        Excelente calidad y aroma increíble. La uso todas las noches para relajarme.
-                      </p>
-                    </div>
-                    
-                    <div className="border-b pb-4">
-                      <div className="flex items-center mb-2">
-                        <div className="flex text-yellow-400 mr-2">
-                          {[1, 2, 3, 4].map((star) => (
-                            <Star key={star} className="h-4 w-4 fill-current" />
-                          ))}
-                          <Star className="h-4 w-4 text-gray-300" />
-                        </div>
-                        <span className="font-medium">Carlos R.</span>
-                        <span className="text-gray-500 text-sm ml-2">hace 1 semana</span>
-                      </div>
-                      <p className="text-gray-600">
-                        Muy buen producto, aunque el aroma podría ser un poco más intenso.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <ProductReviews productId={product.id} />
             </TabsContent>
           </Tabs>
         </div>
